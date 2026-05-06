@@ -9,6 +9,7 @@ import { auth, db } from '@/lib/firebase';
 import { doc } from 'firebase/firestore';
 import { AuthForm } from '@/components/auth/AuthForm';
 import { RoleSelection } from '@/components/auth/RoleSelection';
+import { GeolocationGate } from '@/components/common/GeolocationGate';
 import { AttendeeDashboard } from '@/components/dashboard/AttendeeDashboard';
 import { ManagerDashboard } from '@/components/dashboard/ManagerDashboard';
 import { CrewDashboard } from '@/components/dashboard/CrewDashboard';
@@ -92,7 +93,7 @@ export default function App() {
   const handleBack = () => setSelectedRole(null);
 
   return (
-    <>
+    <GeolocationGate>
       <div className="fixed top-0 left-0 bg-blue-500 text-white z-[9999] px-2 py-1 text-[8px]">APP_SECURE_MODE :: {selectedRole || 'AUTH'}</div>
       {selectedRole === 'attendee' && <AttendeeDashboard onBack={handleBack} userData={userData} onOpenSettings={() => setIsSettingsOpen(true)} />}
       {selectedRole === 'manager' && <ManagerDashboard onBack={handleBack} userData={userData} onOpenSettings={() => setIsSettingsOpen(true)} />}
@@ -122,7 +123,7 @@ export default function App() {
         userData={userData} 
       />
       <Toaster position="top-center" />
-    </>
+    </GeolocationGate>
   );
 }
 
