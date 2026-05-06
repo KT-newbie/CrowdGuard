@@ -411,11 +411,14 @@ const SOSCountdown = ({ targetAt }: { targetAt: number }) => {
   useEffect(() => {
     const q = query(collection(db, 'events'), where('status', '==', 'successful'));
     return onSnapshot(q, (snapshot) => {
-      setEvents(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      const allEvents = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      console.log(`[CrewDashboard] Fetched ${allEvents.length} successful events.`, allEvents.map(e => e.name));
+      setEvents(allEvents);
     }, (error) => {
+      console.error("[CrewDashboard] Events fetch error:", error);
       handleFirestoreError(error, OperationType.GET, 'events-list');
     });
-  }, []);
+  }, [t]);
 
   // 0.2 Fetch All Crew Locations for proximity detection
   useEffect(() => {

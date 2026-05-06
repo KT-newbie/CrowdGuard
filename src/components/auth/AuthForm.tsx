@@ -533,26 +533,6 @@ export function AuthForm() {
               </svg>
               {t('continue_google')}
             </Button>
-            
-            <Button 
-              variant="secondary" 
-              className="w-full bg-slate-900 text-white hover:bg-slate-800 h-10"
-              onClick={async () => {
-                setLoading(true);
-                try {
-                  const { signInAnonymously } = await import('firebase/auth');
-                  await signInAnonymously(auth);
-                  toast.success(t('guest_login_success'));
-                } catch (error: any) {
-                  handleAuthError(error);
-                } finally {
-                  setLoading(false);
-                }
-              }}
-            >
-              <LogIn className="mr-2 h-4 w-4" />
-              {t('explore_as_guest')}
-            </Button>
           </div>
         </CardContent>
         <CardFooter className="text-center text-xs text-muted-foreground">

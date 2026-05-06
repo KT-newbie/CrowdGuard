@@ -26,10 +26,10 @@ export function RoleSelection({ onRoleSelected, userData }: RoleSelectionProps) 
       } else {
         await setDoc(userRef, {
           uid: user.uid,
-          email: user.email || 'guest@demo.local',
+          email: user.email,
           role: role,
           createdAt: serverTimestamp(),
-          username: userData?.username || user.email?.split('@')[0] || `Guest_${user.uid.substring(0, 4)}`,
+          username: userData?.username || user.email?.split('@')[0],
           profilePictureUrl: userData?.profilePictureUrl || '',
           preferredLanguage: userData?.preferredLanguage || 'en'
         });
