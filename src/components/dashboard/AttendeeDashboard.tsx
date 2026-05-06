@@ -518,7 +518,7 @@ export function AttendeeDashboard({ onBack, userData, onOpenSettings }: { onBack
     const q = query(collection(db, 'events'), where('status', '==', 'successful'));
     return onSnapshot(q, (snapshot) => {
       const allEvents = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      console.log(`[AttendeeDashboard] Fetched ${allEvents.length} successful events.`, allEvents.map(e => e.name));
+      console.log(`[AttendeeDashboard] Fetched ${allEvents.length} successful events.`, allEvents.map((e: any) => e.name));
       setEvents(allEvents);
     }, (error) => {
       console.error("[AttendeeDashboard] Events fetch error:", error);

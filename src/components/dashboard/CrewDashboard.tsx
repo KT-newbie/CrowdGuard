@@ -412,7 +412,7 @@ const SOSCountdown = ({ targetAt }: { targetAt: number }) => {
     const q = query(collection(db, 'events'), where('status', '==', 'successful'));
     return onSnapshot(q, (snapshot) => {
       const allEvents = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      console.log(`[CrewDashboard] Fetched ${allEvents.length} successful events.`, allEvents.map(e => e.name));
+      console.log(`[CrewDashboard] Fetched ${allEvents.length} successful events.`, allEvents.map((e: any) => e.name));
       setEvents(allEvents);
     }, (error) => {
       console.error("[CrewDashboard] Events fetch error:", error);
@@ -1250,157 +1250,57 @@ const SOSCountdown = ({ targetAt }: { targetAt: number }) => {
           )}
         </AnimatePresence>
 
-        {/* Venue Overview Statistics */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card className="bg-white border-none shadow-sm rounded-[2rem] overflow-hidden group hover:shadow-md transition-shadow">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-2 mb-2 text-blue-600">
-                <div className="w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <Users className="h-4 w-4" />
-                </div>
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('total_attendance')}</span>
+        {/* 1. SOS FEED - NOW AT TOP */}
+        <div className="space-y-4" id="sos-feed">
+          <header className="flex justify-between items-end px-2">
+            <h3 className="text-sm font-black uppercase text-slate-400 tracking-widest">{t('active_sos_feed')}</h3>
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${sosRequests.length > 0 ? 'bg-red-100 text-red-600' : 'bg-slate-100 text-slate-400'}`}>
+              {sosRequests.length} {t('cases')}
+            </span>
+          </header>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {sosRequests.length > 0 ? (
+              sosRequests.sort((a,b) => {
+                if (a.assignedCrewId === auth.currentUser?.uid) return -1;
+                if (b.assignedCrewId === auth.currentUser?.uid) return 1;
+                return 0;
+              }).map(sos => (
+                <SOSCard 
+                  key={sos.id} 
+                  sos={sos} 
+                  activeEvent={activeEvent}
+                  onMarkArrived={handleMarkArrived}
+                  onAssign={handleAssignSOS}
+                  onResolve={handleResolveSOS}
+                  onOpenChat={(uid) => setSelectedChatUserId(uid)}
+                  position={position}
+                />
+              ))
+            ) : (
+              <div className="col-span-full text-center py-20 bg-white rounded-[40px] border-2 border-dashed border-slate-100">
+                <CheckCircle2 className="h-12 w-12 mx-auto mb-4 text-slate-100" />
+                <p className="text-slate-300 font-black uppercase text-xs tracking-[0.2em]">All Systems Clear</p>
               </div>
-              <p className="text-3xl font-black text-slate-900 tracking-tighter">
-                {zones.reduce((acc, z) => acc + (z.peopleCount || 0), 0).toLocaleString()}
-              </p>
-            </CardContent>
-          </Card>
-          <Card className="bg-white border-none shadow-sm rounded-[2rem] overflow-hidden group hover:shadow-md transition-shadow">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-2 mb-2 text-purple-600">
-                <div className="w-8 h-8 rounded-xl bg-purple-50 flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <Activity className="h-4 w-4" />
-                </div>
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('avg_density')}</span>
-              </div>
-              <p className="text-3xl font-black text-slate-900 tracking-tighter text-purple-600">
-                {zones.length > 0 ? Math.round(zones.reduce((acc, z) => acc + (z.peopleCount / getZoneCapacity(z)), 0) / zones.length * 100) : 0}%
-              </p>
-            </CardContent>
-          </Card>
-          <Card className="bg-white border-none shadow-sm rounded-[2rem] overflow-hidden group hover:shadow-md transition-shadow">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-2 mb-2 text-orange-600">
-                <div className="w-8 h-8 rounded-xl bg-orange-50 flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <Shield className="h-4 w-4" />
-                </div>
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('on_duty_crew')}</span>
-              </div>
-              <p className="text-3xl font-black text-slate-900 tracking-tighter">
-                {allCrewLocations.length}
-              </p>
-            </CardContent>
-          </Card>
-          <Card className="bg-white border-none shadow-sm rounded-[2rem] overflow-hidden group hover:shadow-md transition-shadow">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-2 mb-2 text-red-600">
-                <div className="w-8 h-8 rounded-xl bg-red-50 flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <AlertTriangle className="h-4 w-4" />
-                </div>
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('critical_zones')}</span>
-              </div>
-              <p className={`text-3xl font-black tracking-tighter ${zones.filter(z => (z.peopleCount / getZoneCapacity(z)) > 0.9).length > 0 ? 'text-red-600' : 'text-slate-900'}`}>
-                {zones.filter(z => (z.peopleCount / getZoneCapacity(z)) > 0.9).length}
-              </p>
-            </CardContent>
-          </Card>
+            )}
+          </div>
         </div>
 
-        {/* Dashboard Grid */}
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 items-start">
-          {/* Left Column: Action Center */}
-          <div className="space-y-6">
-            <header className="flex justify-between items-end px-2" id="sos-feed">
-              <h3 className="text-xs font-black uppercase text-slate-400 tracking-widest">{t('active_sos_feed')}</h3>
-              <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${sosRequests.length > 0 ? 'bg-red-100 text-red-600' : 'bg-slate-100 text-slate-400'}`}>
-                {sosRequests.length} {t('cases')}
-              </span>
-            </header>
-            
-            <div className="space-y-4">
-              {sosRequests.length > 0 ? (
-                sosRequests.sort((a,b) => {
-                  if (a.assignedCrewId === auth.currentUser?.uid) return -1;
-                  if (b.assignedCrewId === auth.currentUser?.uid) return 1;
-                  return 0;
-                }).map(sos => (
-                  <SOSCard 
-                    key={sos.id} 
-                    sos={sos} 
-                    activeEvent={activeEvent}
-                    onMarkArrived={handleMarkArrived}
-                    onAssign={handleAssignSOS}
-                    onResolve={handleResolveSOS}
-                    onOpenChat={(uid) => setSelectedChatUserId(uid)}
-                    position={position}
-                  />
-                ))
-              ) : (
-                <div className="text-center py-16 bg-white rounded-[32px] border-2 border-dashed border-slate-100">
-                  <CheckCircle2 className="h-10 w-10 mx-auto mb-3 text-slate-100" />
-                  <p className="text-slate-300 font-black uppercase text-[10px] tracking-widest">All Clear</p>
-                </div>
-              )}
+        {/* 2. VENUE INTELLIGENCE - FULL WIDTH SECTION */}
+        <div className="space-y-4 pt-4">
+          <header className="flex justify-between items-end px-2">
+            <div className="flex flex-col gap-1">
+              <h3 className="text-xs font-black uppercase text-slate-400 tracking-widest">{t('venue_intelligence')}</h3>
+              <p className="text-[10px] text-slate-400 font-medium">REAL-TIME TELEMETRY & FIELD FEED</p>
             </div>
+            <span className="text-[9px] font-black text-green-600 flex items-center gap-1 uppercase">
+              <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" /> {t('synchronized')}
+            </span>
+          </header>
 
-            {/* Intelligence Reports Feed */}
-            <header className="flex justify-between items-end px-2 pt-6">
-               <h3 className="text-xs font-black uppercase text-slate-400 tracking-widest">{t('intelligence_feed')}</h3>
-               <span className="text-[9px] font-bold text-slate-400 uppercase">{intelligenceReports.length} {t('broadcasts')}</span>
-            </header>
-            
-            <Card className="bg-white border-none shadow-sm rounded-[2rem] overflow-hidden">
-               <div className="p-6 space-y-4">
-                  <div className="flex gap-2">
-                     <Input 
-                        placeholder="Broadcast intel to command..." 
-                        className="rounded-xl border-slate-100 bg-slate-50 text-xs h-10"
-                        value={newReport}
-                        onChange={(e) => setNewReport(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && handleSubmitReport()}
-                     />
-                     <Button 
-                        size="sm" 
-                        className="rounded-xl bg-blue-600 hover:bg-blue-700 h-10"
-                        onClick={handleSubmitReport}
-                        disabled={submittingReport}
-                     >
-                        {submittingReport ? '...' : <Send className="h-4 w-4" />}
-                     </Button>
-                  </div>
-
-                  <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-                     {intelligenceReports.length > 0 ? (
-                        intelligenceReports.map((report) => (
-                           <div key={report.id} className="p-3 rounded-2xl bg-slate-50 border border-slate-100 group">
-                              <div className="flex justify-between items-start mb-1">
-                                 <span className="text-[8px] font-black uppercase text-blue-600 tracking-tighter">{report.source}</span>
-                                 <span className="text-[8px] font-medium text-slate-400">{new Date(report.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                              </div>
-                              <p className="text-[11px] text-slate-700 font-medium leading-relaxed">{report.message}</p>
-                           </div>
-                        ))
-                     ) : (
-                        <div className="text-center py-8">
-                           <Activity className="h-6 w-6 mx-auto mb-2 text-slate-200" />
-                           <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">No intelligence reports</p>
-                        </div>
-                     )}
-                  </div>
-               </div>
-            </Card>
-          </div>
-
-          {/* Right Column: Map Section */}
-          {(position === 'staff' || position === 'medical') && (
-            <div className="space-y-4 xl:sticky xl:top-6">
-              <header className="flex justify-between items-end px-2">
-                <h3 className="text-xs font-black uppercase text-slate-400 tracking-widest">{t('venue_intelligence')}</h3>
-                <span className="text-[9px] font-black text-green-600 flex items-center gap-1 uppercase">
-                  <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" /> {t('synchronized')}
-                </span>
-              </header>
-              <Card className="min-h-[500px] xl:h-[650px] bg-[#020617] relative overflow-hidden rounded-[40px] border-none shadow-2xl flex flex-col lg:flex-row">
+          <div className="grid grid-cols-1 xl:grid-cols-[1.5fr_1fr] gap-8 items-stretch">
+            {/* Floor Map - Left (Bigger) */}
+            <Card className="min-h-[600px] xl:h-[750px] bg-[#020617] relative overflow-hidden rounded-[48px] border-none shadow-2xl flex flex-col lg:flex-row">
                 {/* Information Layer (Map) */}
                 <div className="flex-1 relative overflow-hidden min-h-[400px] lg:min-h-0">
                   {/* Location Disabled Banner */}
@@ -1433,20 +1333,20 @@ const SOSCountdown = ({ targetAt }: { targetAt: number }) => {
                   
                   {/* Interactive Toggle for Intelligence if needed (though it's auto-shown) */}
                   {!selectedZone && !selectedGate && (
-                    <div className="absolute bottom-6 left-6 right-6 flex justify-center">
-                       <div className="bg-white/5 backdrop-blur-md px-4 py-2 rounded-full border border-white/10 flex items-center gap-4">
+                    <div className="absolute bottom-10 left-10 right-10 flex justify-center">
+                       <div className="bg-white/5 backdrop-blur-md px-6 py-3 rounded-full border border-white/10 flex items-center gap-6">
                           <div className="flex items-center gap-2">
                              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
                              <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">Live Flow Active</span>
                           </div>
-                          <div className="w-px h-3 bg-white/10" />
+                          <div className="w-px h-4 bg-white/10" />
                           <p className="text-[10px] font-bold text-white/60">{zones.reduce((acc, z) => acc + (z.peopleCount || 0), 0).toLocaleString()} Total Attendees</p>
                        </div>
                     </div>
                   )}
                 </div>
 
-                {/* Intelligence Panel - Responsive animation */}
+                {/* Intelligence Panel - Slide-in Detail Panel */}
                 <AnimatePresence mode="wait">
                    {(selectedZone || selectedGate) && (
                       <motion.div 
@@ -1454,20 +1354,20 @@ const SOSCountdown = ({ targetAt }: { targetAt: number }) => {
                          animate={{ opacity: 1, x: 0 }}
                          exit={{ opacity: 0, x: 100 }}
                          transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                         className="bg-[#0f172a] border-t lg:border-t-0 lg:border-l border-white/5 flex flex-col overflow-hidden relative w-full lg:w-[400px] h-[50vh] lg:h-full shrink-0"
+                         className="bg-[#0f172a] border-t lg:border-t-0 lg:border-l border-white/5 flex flex-col overflow-hidden relative w-full lg:w-[450px] h-[50vh] lg:h-full shrink-0"
                       >
-                         <div className="h-1 w-full bg-gradient-to-r from-blue-600 via-purple-500 to-pink-500" />
+                         <div className="h-1.5 w-full bg-gradient-to-r from-blue-600 via-purple-500 to-pink-500" />
                          
-                         <div className="p-6 lg:p-8 pb-4">
-                             <div className="flex justify-between items-start mb-2">
+                         <div className="p-8 lg:p-10 pb-4">
+                             <div className="flex justify-between items-start mb-6">
                                 <div className="space-y-1">
                                    <div className="flex items-center gap-2">
-                                      {selectedGate ? <Navigation className="h-4 w-4 text-blue-500" /> : <Activity className="h-4 w-4 text-blue-500" />}
-                                      <h2 className="text-sm font-black text-white tracking-widest uppercase italic">
+                                      {selectedGate ? <Navigation className="h-5 w-5 text-blue-500" /> : <Activity className="h-5 w-5 text-blue-500" />}
+                                      <h2 className="text-lg font-black text-white tracking-widest uppercase italic">
                                          {selectedGate ? 'Access Intelligence' : 'Sector Intelligence'}
                                       </h2>
                                    </div>
-                                   <p className="text-[10px] text-white/30 font-black uppercase tracking-[0.2em]">
+                                   <p className="text-[11px] text-white/30 font-black uppercase tracking-[0.2em] mt-1">
                                       {selectedGate ? 'Entry/Exit Point Status' : `Sector: ${selectedZone?.name.toUpperCase()}`}
                                    </p>
                                 </div>
@@ -1478,9 +1378,9 @@ const SOSCountdown = ({ targetAt }: { targetAt: number }) => {
                                     setSelectedZone(null);
                                     setSelectedGate(null);
                                   }} 
-                                  className="text-white/20 hover:text-white h-8 w-8 hover:bg-white/5 rounded-xl transition-all"
+                                  className="text-white/20 hover:text-white h-10 w-10 hover:bg-white/5 rounded-2xl transition-all"
                                 >
-                                   <X className="h-5 w-5" />
+                                   <X className="h-6 w-6" />
                                 </Button>
                              </div>
                           </div>
@@ -1541,51 +1441,32 @@ const SOSCountdown = ({ targetAt }: { targetAt: number }) => {
                                           </div>
                                        </div>
 
-                                       <div className="pt-4 border-t border-white/5">
-                                          <div className="grid grid-cols-2 gap-4">
-                                              <div className="space-y-1">
-                                                 <p className="text-[8px] font-black text-white/20 uppercase tracking-widest">Status</p>
-                                                 <div className="flex items-center gap-2">
-                                                    <div className={`w-2 h-2 rounded-full ${gd.status === 'OPEN' ? 'bg-green-500' : gd.status === 'CROWDED' ? 'bg-red-500' : gd.status === 'CLOSED' ? 'bg-slate-500' : 'bg-orange-500'}`} />
-                                                    <span className="text-xs font-black text-white uppercase">{gd.status || 'ACTIVE'}</span>
-                                                 </div>
-                                              </div>
-                                              <div className="space-y-1">
-                                                 <p className="text-[8px] font-black text-white/20 uppercase tracking-widest">Role</p>
-                                                 <span className="text-xs font-black text-white uppercase italic">{gd.type === 'ENTRY' ? 'Primary Ingress' : 'Primary Egress'}</span>
-                                              </div>
+                                       <div className="pt-4 border-t border-white/5 space-y-4">
+                                          <p className="text-[9px] font-black text-blue-500 uppercase tracking-widest">Gate Control</p>
+                                          <div className="grid grid-cols-2 gap-2">
+                                             {['OPEN', 'CLOSED', 'CROWDED', 'RESTRICTED'].map(status => (
+                                                <Button 
+                                                  key={status}
+                                                  variant="ghost" 
+                                                  size="sm"
+                                                  className={`h-12 rounded-xl text-[10px] font-black uppercase tracking-tight border transition-all ${
+                                                    gd.status === status 
+                                                      ? 'bg-blue-600 text-white border-blue-500' 
+                                                      : 'bg-white/5 text-white/40 border-white/5'
+                                                  }`}
+                                                  onClick={async () => {
+                                                    try {
+                                                      await updateDoc(doc(db, 'events', activeEvent.id, 'gates', gd.id), { status });
+                                                      toast.success(`Gate ${gd.label} status set to ${status}`);
+                                                    } catch (e: any) {
+                                                      handleFirestoreError(e, OperationType.UPDATE, `events/${activeEvent.id}/gates/${gd.id}`);
+                                                    }
+                                                  }}
+                                                >
+                                                  {status}
+                                                </Button>
+                                             ))}
                                           </div>
-
-                                          {/* Crew Control Panel for Gates */}
-                                          {position === 'staff' && (
-                                            <div className="mt-8 pt-6 border-t border-white/5 space-y-4">
-                                               <p className="text-[9px] font-black text-blue-500 uppercase tracking-widest">Crew Intelligence Control</p>
-                                               <div className="grid grid-cols-2 gap-2">
-                                                  {['OPEN', 'CLOSED', 'CROWDED', 'RESTRICTED'].map(status => (
-                                                     <Button 
-                                                       key={status}
-                                                       variant="ghost" 
-                                                       size="sm"
-                                                       className={`h-10 rounded-xl text-[10px] font-black uppercase tracking-tight border transition-all ${
-                                                         gd.status === status 
-                                                           ? 'bg-blue-600 text-white border-blue-500 shadow-lg shadow-blue-600/20' 
-                                                           : 'bg-white/5 text-white/40 border-white/5 hover:bg-white/10'
-                                                       }`}
-                                                       onClick={async () => {
-                                                         try {
-                                                           await updateDoc(doc(db, 'events', activeEvent.id, 'gates', gd.id), { status });
-                                                           toast.success(`Gate ${gd.label} status set to ${status}`);
-                                                         } catch (e: any) {
-                                                           handleFirestoreError(e, OperationType.UPDATE, `events/${activeEvent.id}/gates/${gd.id}`);
-                                                         }
-                                                       }}
-                                                     >
-                                                       {status}
-                                                     </Button>
-                                                  ))}
-                                               </div>
-                                            </div>
-                                          )}
                                        </div>
                                     </div>
                                  );
@@ -1600,7 +1481,7 @@ const SOSCountdown = ({ targetAt }: { targetAt: number }) => {
                                        <div className="grid grid-cols-2 gap-4">
                                           <div className="bg-white/[0.03] rounded-[2rem] p-6 border border-white/[0.05]">
                                              <p className="text-[9px] text-white/20 font-black uppercase tracking-widest mb-3">Live Pop.</p>
-                                             <p className="text-4xl font-black text-white leading-none tracking-tighter">{zd.peopleCount.toLocaleString()}</p>
+                                              <p className="text-4xl font-black text-white leading-none tracking-tighter">{zd.peopleCount.toLocaleString()}</p>
                                           </div>
                                           <div className="bg-white/[0.03] rounded-[2rem] p-6 border border-white/[0.05]">
                                              <p className="text-[9px] text-white/20 font-black uppercase tracking-widest mb-3">Max Cap.</p>
@@ -1625,82 +1506,107 @@ const SOSCountdown = ({ targetAt }: { targetAt: number }) => {
                                           </div>
                                        </div>
 
-                                       <div className="space-y-4">
-                                          <h4 className="text-[11px] font-black text-white italic tracking-widest uppercase">Team Distribution</h4>
-                                          <div className="space-y-3">
-                                             <div className="flex justify-between items-center bg-blue-600/5 border border-blue-500/10 rounded-[1.5rem] px-6 py-4">
-                                                <div className="flex items-center gap-3">
-                                                   <div className="rounded-full bg-blue-500 h-2.5 w-2.5" />
-                                                   <span className="text-[10px] font-black text-white uppercase tracking-widest">Attendees</span>
-                                                </div>
-                                                <span className="text-sm font-bold text-blue-400">{Math.floor(zd.peopleCount * 0.95).toLocaleString()}</span>
-                                             </div>
-                                             
-                                             <div className="flex justify-between items-center bg-orange-600/5 border border-orange-500/10 rounded-[1.5rem] px-6 py-4">
-                                                <div className="flex items-center gap-3">
-                                                   <div className="rounded-full bg-[#EA580C] h-2.5 w-2.5" />
-                                                   <span className="text-[10px] font-black text-white uppercase tracking-widest">On-Duty Crew</span>
-                                                </div>
-                                                <span className="text-sm font-bold text-[#EA580C]">{Math.ceil(zd.peopleCount * 0.05).toLocaleString()}</span>
-                                             </div>
-                                          </div>
-                                          {/* Crew Control Panel for Zones */}
-                                          {position === 'staff' && (
-                                            <div className="pt-6 border-t border-white/5 space-y-4">
-                                               <p className="text-[9px] font-black text-blue-500 uppercase tracking-widest">Crew Sector Report</p>
-                                               <div className="grid grid-cols-2 gap-2">
-                                                  {['NORMAL', 'BUSY', 'CROWDED', 'CRITICAL'].map(status => (
-                                                     <Button 
-                                                       key={status}
-                                                       variant="ghost" 
-                                                       size="sm"
-                                                       className={`h-10 rounded-xl text-[10px] font-black uppercase tracking-tight border transition-all ${
-                                                         (zd as any).status === status 
-                                                           ? 'bg-blue-600 text-white border-blue-500 shadow-lg shadow-blue-600/20' 
-                                                           : 'bg-white/5 text-white/40 border-white/5 hover:bg-white/10'
-                                                       }`}
-                                                       onClick={async () => {
-                                                         try {
-                                                           await updateDoc(doc(db, 'events', activeEvent.id, 'zones', zd.id), { status });
-                                                           toast.success(`Sector ${zd.name} marked as ${status}`);
-                                                         } catch (e: any) {
-                                                           handleFirestoreError(e, OperationType.UPDATE, `events/${activeEvent.id}/zones/${zd.id}`);
-                                                         }
-                                                       }}
-                                                     >
-                                                       {status}
-                                                     </Button>
-                                                  ))}
-                                               </div>
+                                       {position === 'staff' && (
+                                         <div className="pt-6 border-t border-white/5 space-y-4">
+                                            <p className="text-[9px] font-black text-blue-500 uppercase tracking-widest">Crew Sector Report</p>
+                                            <div className="grid grid-cols-3 gap-2">
+                                               {['NORMAL', 'BUSY', 'CRITICAL'].map(status => (
+                                                  <Button 
+                                                    key={status}
+                                                    variant="ghost" 
+                                                    size="sm"
+                                                    className={`h-12 rounded-xl text-[10px] font-black uppercase tracking-tight border transition-all ${
+                                                      (zd as any).status === status 
+                                                        ? 'bg-blue-600 text-white border-blue-500' 
+                                                        : 'bg-white/5 text-white/40 border-white/5'
+                                                    }`}
+                                                    onClick={async () => {
+                                                      try {
+                                                        await updateDoc(doc(db, 'events', activeEvent.id, 'zones', zd.id), { status });
+                                                        toast.success(`Sector ${zd.name} marked as ${status}`);
+                                                      } catch (e: any) {
+                                                        handleFirestoreError(e, OperationType.UPDATE, `events/${activeEvent.id}/zones/${zd.id}`);
+                                                      }
+                                                    }}
+                                                  >
+                                                    {status}
+                                                  </Button>
+                                               ))}
                                             </div>
-                                          )}
-                                       </div>
+                                         </div>
+                                       )}
                                     </div>
                                  );
                                }
                                return null;
                             })()}
-                          </div>
+                         </div>
                       </motion.div>
                    )}
                 </AnimatePresence>
-              </Card>
+            </Card>
 
-              <div className="grid grid-cols-2 gap-3">
-                <Button className="h-14 rounded-2xl bg-blue-600/10 text-blue-600 border border-blue-200 hover:bg-blue-600/20 text-xs font-bold uppercase"><Navigation className="mr-2 h-4 w-4" /> {t('routes')}</Button>
-                <Button className="h-14 rounded-2xl bg-slate-950 text-white hover:bg-slate-900 text-xs font-bold uppercase"><MessageSquare className="mr-2 h-4 w-4" /> {t('comms')}</Button>
-              </div>
+            {/* Broadcast Feed - Right (Smaller) */}
+            <div className="flex flex-col gap-4 h-full">
+              <header className="flex justify-between items-center px-1">
+                <h3 className="text-xs font-black uppercase text-slate-400 tracking-widest">Live Broadcast</h3>
+                <span className="text-[9px] font-bold text-blue-500 flex items-center gap-1 uppercase">
+                  <div className="w-1 h-1 bg-blue-500 rounded-full animate-pulse" /> {intelligenceReports.length} {t('broadcasts')}
+                </span>
+              </header>
+              <Card className="flex-1 bg-white border-none shadow-sm rounded-[48px] overflow-hidden flex flex-col min-h-[500px]">
+                <div className="p-8 flex-1 flex flex-col space-y-6">
+                  {/* Reporting Input */}
+                  <div className="flex gap-2">
+                    <Input 
+                      placeholder="Report field intel..." 
+                      className="rounded-2xl border-slate-100 bg-slate-50 text-xs h-14"
+                      value={newReport}
+                      onChange={(e) => setNewReport(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleSubmitReport()}
+                    />
+                    <Button 
+                      className="rounded-2xl bg-blue-600 hover:bg-blue-700 h-14 w-14 p-0 flex items-center justify-center shrink-0 shadow-lg shadow-blue-600/20"
+                      onClick={handleSubmitReport}
+                      disabled={submittingReport}
+                    >
+                      {submittingReport ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Send className="h-5 w-5" />}
+                    </Button>
+                  </div>
+
+                  {/* Intelligence List */}
+                  <div className="flex-1 overflow-y-auto space-y-4 pr-1 scrollbar-hide">
+                    {intelligenceReports.length > 0 ? (
+                      intelligenceReports.map((report) => (
+                        <div key={report.id} className="p-5 rounded-[2rem] bg-slate-50 border border-slate-100 relative group">
+                          <div className="flex justify-between items-start mb-2">
+                            <span className="text-[10px] font-black uppercase text-blue-600 tracking-tighter">{report.source} • {report.position}</span>
+                            <span className="text-[9px] font-bold text-slate-400">{new Date(report.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                          </div>
+                          <p className="text-sm text-slate-700 font-medium leading-relaxed">{report.message}</p>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="flex flex-col items-center justify-center h-full text-slate-300 py-12">
+                        <Activity className="h-10 w-10 mb-2 opacity-20" />
+                        <p className="text-[10px] font-bold uppercase tracking-[0.2em]">{t('no_intelligence_reports')}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </Card>
             </div>
-          )}
+          </div>
         </div>
-      </div>
-      {activeEvent && sosRequests.length > 0 && (
+
+        {activeEvent && sosRequests.length > 0 && (
         <FloatingChat 
           eventId={activeEvent.id} 
           userRole="crew" 
           selectedUserId={selectedChatUserId} 
         />
       )}
+      </div>
       </main>
     </div>
   );
