@@ -1,0 +1,5 @@
+{
+  "name": "CrowdGuard",
+  "description": "A secure and reliable event management app for attendees, managers, and service crew with role-based access control.",
+  "requestFramePermissions": ["geolocation"]
+}

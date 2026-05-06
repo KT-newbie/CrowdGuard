@@ -1,0 +1,121 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function getRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    function hasRole(role) {
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+             getRole() == role;
+    }
+
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isOwner(userId);
+    }
+
+    match /events/{eventId} {
+      // Any authenticated user can see events and their public data
+      allow read: if isAuthenticated();
+      
+      // Anyone can create demo events, but only managers can create real ones
+      allow create: if hasRole('manager') || request.resource.data.isDemo == true;
+      
+      // Anyone can update demo events. For non-demo events, only the assigned manager can update.
+      allow update: if (resource.data.get('isDemo', false) == true) || 
+                       (hasRole('manager') && resource.data.managerId == request.auth.uid);
+      allow delete: if hasRole('manager') && 
+                       (resource.data.managerId == request.auth.uid || resource.data.get('isDemo', false) == true);
+      
+      match /zones/{zoneId} {
+        allow read: if isAuthenticated();
+        // Allow write for everyone for simulation purposes in this demo environment
+        allow write: if isAuthenticated();
+      }
+
+      match /gates/{gateId} {
+        allow read: if isAuthenticated();
+        // Allow write for everyone for simulation purposes in this demo environment
+        allow write: if isAuthenticated();
+      }
+
+      match /sos/{sosId} {
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated();
+        // Allow the requester to update (needed for simulation and manual resolve)
+        // or managers/crew to update during response
+        allow update: if isOwner(resource.data.userId) || 
+                        hasRole('manager') || 
+                        hasRole('crew');
+
+        match /messages/{messageId} {
+          allow read: if isAuthenticated();
+          allow create: if isAuthenticated();
+        }
+      }
+
+      match /chats/{userId} {
+        allow read, write: if isAuthenticated();
+        match /messages/{messageId} {
+          allow read, write: if isAuthenticated();
+        }
+      }
+
+      match /intelligence/{reportId} {
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated();
+        allow delete: if hasRole('manager');
+      }
+
+      match /crewLocations/{crewId} {
+        // Crew and managers need to see where everyone is for proximity logic
+        // Also allow reading if the event is a demo event
+        allow read: if hasRole('manager') || hasRole('crew') || 
+                       get(/databases/$(database)/documents/events/$(eventId)).data.isDemo == true;
+        // Only the crew member can update their own location
+        allow write: if isOwner(crewId);
+      }
+    }
+
+    match /locations/{locationId} {
+      // Managers and Crew can see all attendee locations for heatmap/security
+      // Attendees can see their own location record
+      // Also allow reading if the event is a demo event
+      allow read: if hasRole('manager') || hasRole('crew') || isOwner(locationId) ||
+                     get(/databases/$(database)/documents/events/$(resource.data.eventId)).data.isDemo == true;
+      allow create: if isAuthenticated();
+      allow update: if isOwner(locationId);
+    }
+
+    match /venueLayouts/{layoutId} {
+      // Everyone can read layouts to see maps
+      allow read: if isAuthenticated();
+      // Only managers can create or update layouts
+      allow write: if hasRole('manager');
+    }
+
+    match /notifications/{notificationId} {
+      // Crew can create notifications for managers
+      allow create: if isAuthenticated();
+      // Managers can see and manage their own notifications
+      allow read, update, delete: if isAuthenticated() && 
+                                    (resource == null || resource.data.managerId == request.auth.uid);
+    }
+  }
+}

@@ -1,0 +1,148 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile and role information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "phoneNumber": { "type": "string" },
+        "role": { "type": "string", "enum": ["attendee", "manager", "crew"] },
+        "position": { "type": "string", "enum": ["marshal", "medical"], "description": "Specific role for crew" },
+        "currentEventId": { "type": "string" }
+      }
+    },
+    "Event": {
+      "title": "Event",
+      "description": "Event details and management state",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "date": { "type": "string" },
+        "duration": { "type": "string" },
+        "managerId": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "successful", "failed"] },
+        "eventCode": { "type": "string" },
+        "isOngoing": { "type": "boolean" },
+        "isEnded": { "type": "boolean" },
+        "exitGuidanceActive": { "type": "boolean" },
+        "depositPaid": { "type": "boolean" },
+        "registrationFeePaid": { "type": "boolean" }
+      }
+    },
+    "Zone": {
+      "title": "Zone",
+      "description": "A specific area in the venue for density monitoring",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "eventId": { "type": "string" },
+        "name": { "type": "string" },
+        "areaM2": { "type": "number" },
+        "peopleCount": { "type": "number" },
+        "isSeated": { "type": "boolean" },
+        "recommendedExitDoor": { "type": "string" }
+      }
+    },
+    "SOSRequest": {
+      "title": "SOSRequest",
+      "description": "Emergency assistance request",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "eventId": { "type": "string" },
+        "category": { "type": "string", "enum": ["security", "medical", "lost"] },
+        "severity": { "type": "string", "enum": ["minor", "emergency"] },
+        "lat": { "type": "number" },
+        "lng": { "type": "number" },
+        "timestamp": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "assigned", "resolved"] },
+        "assignedCrewId": { "type": "string" },
+        "etaMinutes": { "type": "number" },
+        "targetArrivalTime": { "type": "number" }
+      }
+    },
+    "UserLocation": {
+      "title": "UserLocation",
+      "description": "Real-time location of a user",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "eventId": { "type": "string" },
+        "zoneId": { "type": "string" },
+        "lat": { "type": "number" },
+        "lng": { "type": "number" },
+        "timestamp": { "type": "string" },
+        "isAnonymous": { "type": "boolean" }
+      }
+    },
+    "ChatMessage": {
+      "title": "ChatMessage",
+      "description": "A message in the SOS chat",
+      "type": "object",
+      "properties": {
+        "text": { "type": "string" },
+        "senderId": { "type": "string" },
+        "senderType": { "type": "string", "enum": ["attendee", "crew"] },
+        "timestamp": { "type": "string" }
+      }
+    },
+    "Gate": {
+      "title": "Gate",
+      "description": "An entry or exit gate at the venue",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "label": { "type": "string" },
+        "type": { "type": "string", "enum": ["ENTRY", "EXIT"] },
+        "flowRate": { "type": "number" },
+        "currentLoad": { "type": "number" },
+        "status": { "type": "string", "enum": ["OPEN", "CLOSED", "CROWDED", "STANDBY", "RESTRICTED"] }
+      }
+    },
+    "IntelligenceReport": {
+      "title": "IntelligenceReport",
+      "description": "Log of automated or manual updates about the venue",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "timestamp": { "type": "string" },
+        "message": { "type": "string" },
+        "type": { "type": "string", "enum": ["auto", "manual", "alert"] },
+        "source": { "type": "string" },
+        "severity": { "type": "string", "enum": ["info", "warning", "critical"] }
+      }
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "Direct message or announcement for a manager from crew",
+      "type": "object",
+      "properties": {
+        "managerId": { "type": "string" },
+        "eventId": { "type": "string" },
+        "eventName": { "type": "string" },
+        "senderName": { "type": "string" },
+        "senderPosition": { "type": "string" },
+        "text": { "type": "string" },
+        "timestamp": { "type": "string" },
+        "read": { "type": "boolean" },
+        "type": { "type": "string" }
+      }
+    }
+  },
+  "firestore": {
+    "/users/{userId}": { "schema": "User", "description": "User profiles" },
+    "/events/{eventId}": { "schema": "Event", "description": "Event documents" },
+    "/events/{eventId}/zones/{zoneId}": { "schema": "Zone", "description": "Zones within an event" },
+    "/events/{eventId}/gates/{gateId}": { "schema": "Gate", "description": "Gates within an event" },
+    "/events/{eventId}/sos/{sosId}": { "schema": "SOSRequest", "description": "SOS requests for an event" },
+    "/events/{eventId}/sos/{sosId}/messages/{messageId}": { "schema": "ChatMessage", "description": "Messages for an SOS request" },
+    "/events/{eventId}/chats/{userId}/messages/{messageId}": { "schema": "ChatMessage", "description": "Persistent chat messages between attendee and crew" },
+    "/events/{eventId}/intelligence/{reportId}": { "schema": "IntelligenceReport", "description": "Feed of intelligence updates" },
+    "/locations/{locationId}": { "schema": "UserLocation", "description": "Real-time user locations" },
+    "/notifications/{notificationId}": { "schema": "Notification", "description": "Announcements and messages for managers" }
+  }
+}
